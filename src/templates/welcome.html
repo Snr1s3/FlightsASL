@@ -1,50 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FlightsASL</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+4wTk9bJ9p73L0u2Xe1c+SwtTMIuAxJSkMCm3r0P8="
+    crossorigin=""
+  />
+
   <style>
+    html, body {
+      height: 100%;
+    }
     body {
       font-family: Arial, sans-serif;
       background: linear-gradient(120deg, #091540, #7699d4);
       color: #fff;
+      margin: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      margin: 0;
+      padding: 24px;
+      box-sizing: border-box;
     }
-    h1 {
-      letter-spacing: 0.3rem;
-      text-transform: uppercase;
+    .card {
+      max-width: 640px;
+      width: 90%;
+      text-align: center;
+    }
+    button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #map {
+      width: 100%;
+      height: 400px;          /* critical */
+      min-height: 400px;      /* extra safety */
+      border-radius: 12px;
+      margin-top: 2rem;
+      background: rgba(255,255,255,0.08); /* shows container even before tiles load */
     }
   </style>
 </head>
 <body>
-  <div>
+  <div class="card">
     <h1>WELCOME!</h1>
     <p id="api-response">Click the button to ping the API.</p>
-    <button id="ping-button">Ping API</button>
+    <button id="ping-button" type="button">Ping API</button>
+    <div id="map"></div>
   </div>
 
-  <script>
-    const button = document.getElementById('ping-button');
-    const responseEl = document.getElementById('api-response');
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-SmHgwl5cTg7C4GxNG6aI1yLxkG4PbLf4zYwKQ2SLkL8="
+    crossorigin=""
+  ></script>
 
-    button.addEventListener('click', async () => {
-      responseEl.textContent = 'Contacting API...';
-      try {
-        const res = await fetch('/api/welcome');
-        if (!res.ok) {
-          throw new Error('Request failed');
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const button = document.getElementById("ping-button");
+      const responseEl = document.getElementById("api-response");
+
+      button.addEventListener("click", async () => {
+        responseEl.textContent = "Contacting API...";
+        try {
+          const res = await fetch("/api/welcome");
+          if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+          const data = await res.json();
+          responseEl.textContent = data.message ?? "API responded, but no message field.";
+        } catch (err) {
+          responseEl.textContent = "Could not reach the API.";
+          console.error(err);
         }
-        const data = await res.json();
-        responseEl.textContent = data.message;
-      } catch (err) {
-        responseEl.textContent = 'Could not reach the API.';
-        console.error(err);
+      });
+
+      // Make sure Leaflet loaded
+      if (!window.L) {
+        responseEl.textContent = "Map library failed to load (Leaflet). Check console/network/CSP.";
+        console.error("Leaflet did not load: window.L is missing");
+        return;
       }
+
+      // Create map
+      const map = L.map("map", { zoomControl: true }).setView([47.4502, -122.3088], 10);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
+      // Flex/layout safety: ensure Leaflet recalculates container size
+      setTimeout(() => map.invalidateSize(), 0);
+
+      // Load airports
+      fetch("/api/airports")
+        .then((res) => {
+          if (!res.ok) throw new Error(`Airports request failed: ${res.status}`);
+          return res.json();
+        })
+        .then((airports) => {
+          if (!Array.isArray(airports)) throw new Error("Airports response is not an array");
+          airports.forEach((airport) => {
+            const lat = airport.lat;
+            const lon = airport.lon;
+
+            // Accept numeric strings too
+            const latNum = typeof lat === "number" ? lat : Number(lat);
+            const lonNum = typeof lon === "number" ? lon : Number(lon);
+
+            if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) return;
+
+            L.marker([latNum, lonNum])
+              .addTo(map)
+              .bindPopup(`${airport.name ?? "Unknown"} (${airport.iata ?? "N/A"})`);
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          responseEl.textContent = "Could not load airport data.";
+        });
     });
   </script>
 </body>
