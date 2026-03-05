@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -7,19 +8,19 @@ from .flight import Flight
 
 class Airport(BaseModel):
     name: str = Field(..., description="Human-readable airport name")
-    iata: str | None = Field(
+    iata: Optional[str] = Field(
         default=None,
         description="Three-letter IATA identifier (e.g., LAX)",
     )
-    icao: str | None = Field(
+    icao: Optional[str] = Field(
         default=None,
         description="Four-letter ICAO identifier (e.g., KLAX)",
     )
-    lat: float | None = Field(
+    lat: Optional[float] = Field(
         default=None,
         description="Latitude in decimal degrees",
     )
-    lon: float | None = Field(
+    lon: Optional[float] = Field(
         default=None,
         description="Longitude in decimal degrees",
     )
