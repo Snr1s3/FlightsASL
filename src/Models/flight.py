@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class Flight(BaseModel):
     number: str
     origin: str

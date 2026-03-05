@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from typing import List
-from Models import Flight
+
+from pydantic import BaseModel
+
+from .flight import Flight
 
 class Airport(BaseModel):
     name: str
