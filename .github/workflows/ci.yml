@@ -28,7 +28,8 @@ jobs:
 
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
-
+      - name: Validate lock
+        run: poetry lock
       - name: Validate project metadata
         run: poetry check
 
