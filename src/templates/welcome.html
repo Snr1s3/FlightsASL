@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlightsASL</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(120deg, #091540, #7699d4);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      letter-spacing: 0.3rem;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>WELCOME!</h1>
+    <p id="api-response">Click the button to ping the API.</p>
+    <button id="ping-button">Ping API</button>
+  </div>
+
+  <script>
+    const button = document.getElementById('ping-button');
+    const responseEl = document.getElementById('api-response');
+
+    button.addEventListener('click', async () => {
+      responseEl.textContent = 'Contacting API...';
+      try {
+        const res = await fetch('/api/welcome');
+        if (!res.ok) {
+          throw new Error('Request failed');
+        }
+        const data = await res.json();
+        responseEl.textContent = data.message;
+      } catch (err) {
+        responseEl.textContent = 'Could not reach the API.';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
