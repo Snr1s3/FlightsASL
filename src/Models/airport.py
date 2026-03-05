@@ -6,6 +6,6 @@ class Airport(BaseModel):
     name: str
     iata: str
     icao: str
-    lat: float | None = None
-    lon: float | None = None
+    lat: float
+    lon: float 
     flights_list: list[Flight]
