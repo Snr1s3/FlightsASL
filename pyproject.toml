@@ -16,7 +16,7 @@ dependencies = [
 package-mode = false
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.6.8"
+ruff = { version = "^0.6.8", python = ">=3.7" }
 
 [tool.ruff]
 line-length = 100
