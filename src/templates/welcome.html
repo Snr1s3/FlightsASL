@@ -5,126 +5,213 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FlightsASL</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-sA+4wTk9bJ9p73L0u2Xe1c+SwtTMIuAxJSkMCm3r0P8="
-    crossorigin=""
-  />
-
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     html, body {
       height: 100%;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
+
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(120deg, #091540, #7699d4);
+      background: linear-gradient(135deg, #0b1a3b 0%, #1a3a6e 60%, #2e6bbb 100%);
+      color: #e8edf5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    header .logo {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: 2px;
       color: #fff;
-      margin: 0;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.4);
+    }
+    header .logo span {
+      color: #7eb8f7;
+    }
+    header p {
+      margin-top: 8px;
+      font-size: 1rem;
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 670px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+    }
+
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 10px 10px 10px 20px;
+      gap: 8px;
+      transition: border-color 0.2s;
+    }
+    .search-bar:focus-within {
+      border-color: #7eb8f7;
+      background: rgba(255,255,255,0.14);
+    }
+    .search-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .search-bar input::placeholder { color: rgba(255,255,255,0.5); }
+    .search-bar button {
+      background: #2e6bbb;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
-    }
-    .card {
-      max-width: 640px;
-      width: 90%;
-      text-align: center;
-    }
-    button {
-      padding: 10px 14px;
-      border: 0;
-      border-radius: 10px;
       cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      flex-shrink: 0;
     }
-    #map {
+    .search-bar button:hover  { background: #4a8fd4; }
+    .search-bar button:active { transform: scale(0.93); }
+
+    /* ── Status message ── */
+    #api-response {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.55);
+      min-height: 1.4em;
+    }
+
+    /* ── Results ── */
+    #search-results {
+      
+      padding: 10px 10px 10px 20px;
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 200px;
+      align-items: center;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      overflow-y: auto;
+    }
+    #search-results::-webkit-scrollbar        { width: 6px; }
+    #search-results::-webkit-scrollbar-track  { background: rgba(255,255,255,0.05); border-radius: 999px; }
+    #search-results::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.25); border-radius: 999px; }
+    #search-results::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.45); }
+
+    .airport-item {
       width: 100%;
-      height: 400px;          /* critical */
-      min-height: 400px;      /* extra safety */
-      border-radius: 12px;
-      margin-top: 2rem;
-      background: rgba(255,255,255,0.08); /* shows container even before tiles load */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
     }
   </style>
 </head>
 <body>
+  <header>
+    <div class="logo">Flights<span>ASL</span></div>
+  </header>
+
   <div class="card">
-    <h1>WELCOME!</h1>
-    <p id="api-response">Click the button to ping the API.</p>
-    <button id="ping-button" type="button">Ping API</button>
-    <div id="map"></div>
+    <p id="api-response">Type an airport name to get started.</p>
+
+    <div class="search-bar">
+      <input id="search-input" type="text" placeholder="e.g. Barcelona, JFK, Heathrow…" autocomplete="off" />
+      <button id="search-btn" title="Search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+             fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+    </div>
+    <div id="search-results"></div>
   </div>
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-SmHgwl5cTg7C4GxNG6aI1yLxkG4PbLf4zYwKQ2SLkL8="
-    crossorigin=""
-  ></script>
-
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const button = document.getElementById("ping-button");
-      const responseEl = document.getElementById("api-response");
+    const search_input = document.getElementById('search-input');
+    const search_btn = document.getElementById('search-btn');
+    const results = document.getElementById('search-results');
 
-      button.addEventListener("click", async () => {
-        responseEl.textContent = "Contacting API...";
-        try {
-          const res = await fetch("/web/welcome");
-          if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-          const data = await res.json();
-          responseEl.textContent = data.message ?? "API responded, but no message field.";
-        } catch (err) {
-          responseEl.textContent = "Could not reach the API.";
-          console.error(err);
-        }
+    let currentAirports = [];
+
+    search_input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') search();
+    });
+
+    search_btn.addEventListener('click', () => search());
+
+    results.addEventListener('click', async e => {
+      const button = e.target.closest('.airport-btn');
+      if (!button) return;
+
+      const index = Number(button.dataset.index);
+      const airport = currentAirports[index];
+
+      const res = await fetch('/api/airport/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(airport)
       });
 
-      // Make sure Leaflet loaded
-      if (!window.L) {
-        responseEl.textContent = "Map library failed to load (Leaflet). Check console/network/CSP.";
-        console.error("Leaflet did not load: window.L is missing");
-        return;
-      }
+      const data = await res.json();
+      console.log(data);
+    });
 
-      // Create map
-      const map = L.map("map", { zoomControl: true }).setView([47.4502, -122.3088], 10);
+    async function search() {
+      const name = search_input.value.trim();
+      if (!name) return;
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
+      const res = await fetch(`/api/airport/search?name=${encodeURIComponent(name)}`);
+      const airports = await res.json();
 
-      // Flex/layout safety: ensure Leaflet recalculates container size
-      setTimeout(() => map.invalidateSize(), 0);
+      currentAirports = airports;
 
-      // Load airports
-      fetch("/web/airports")
-        .then((res) => {
-          if (!res.ok) throw new Error(`Airports request failed: ${res.status}`);
-          return res.json();
-        })
-        .then((airports) => {
-          if (!Array.isArray(airports)) throw new Error("Airports response is not an array");
-          airports.forEach((airport) => {
-            const lat = airport.lat;
-            const lon = airport.lon;
-
-            // Accept numeric strings too
-            const latNum = typeof lat === "number" ? lat : Number(lat);
-            const lonNum = typeof lon === "number" ? lon : Number(lon);
-
-            if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) return;
-
-            L.marker([latNum, lonNum])
-              .addTo(map)
-              .bindPopup(`${airport.name ?? "Unknown"} (${airport.iata ?? "N/A"})`);
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          responseEl.textContent = "Could not load airport data.";
-        });
+      results.innerHTML = airports.map((a, index) => `
+        <div class="airport-item">
+          <div>
+            <p>${a.name} - ${a.iata} / ${a.icao}</p>
+            <p>${a.lat} / ${a.lon}</p>
+          </div>
+          <button class="airport-btn" data-index="${index}">Save</button>
+        </div>
+      `).join('');
+    }
+  </script>
+  <script>
+    document.querySelectorAll('.airport-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        console.log(button.dataset.name);
+      });
     });
   </script>
 </body>

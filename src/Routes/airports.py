@@ -41,6 +41,11 @@ async def search_airport(name: str) -> list[Airport]:
         return []
     return aeroports
 
+@router.get("/all")
+async def get_all(mongo: MongoConnector = mongo_dependency) -> list[Airport]:
+    aeroports = mongo.find("FLIGHTSASL","")
+    return aeroports
+
 async def airport_exists(airport: Airport, mongo: MongoConnector) -> bool:
     result = mongo.find_one("FLIGHTSASL", {"name": airport.name})
     return result is not None
