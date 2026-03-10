@@ -1,11 +1,11 @@
 import re
-from pprint import pprint
 from typing import Any, List
 
 from fastapi import APIRouter, Depends
 from FlightRadar24 import FlightRadar24API
-from src.Models.airport import Airport
+
 from src.db.db_connection import MongoConnector
+from src.Models.airport import Airport
 
 router = APIRouter(
     prefix="/api/airport",
@@ -17,8 +17,10 @@ fr_api = FlightRadar24API()
 def get_mongo() -> MongoConnector:
     return MongoConnector()
 
+mongo_dependency = Depends(get_mongo)
+
 @router.post("/save")
-async def save_airport(airport: Airport, mongo: MongoConnector = Depends(get_mongo)):
+async def save_airport(airport: Airport, mongo: MongoConnector = mongo_dependency):
     if await airport_exists(airport, mongo):
         print("Duplicat")
         return [{"Duplicated":"This airport already exists"}]

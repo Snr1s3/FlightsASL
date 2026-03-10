@@ -2,11 +2,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 
 from src.Routes import airports, web
-
-from .Models import Airport, Flight
 
 app = FastAPI(title="FlightsASL API", version="0.1.0")
 
@@ -22,7 +20,6 @@ app.add_middleware(
 	allow_methods=["*"],
 	allow_headers=["*"],
 )
-()
 
 app.include_router(airports.router)
 app.include_router(web.router)

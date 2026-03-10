@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Iterable, Optional
+from typing import Iterable, Optional
 
 from pymongo import MongoClient
 from pymongo.collection import Collection
