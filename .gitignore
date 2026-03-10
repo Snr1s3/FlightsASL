@@ -1,8 +1,39 @@
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environments
 .env
+.env.*
 .venv/
+venv/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Ruff / linting
+.ruff_cache/
+
+# IDEs
 .idea/
 .vscode/
+
+# OS
 .DS_Store
-coverage.xml
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Poetry
+poetry.lock
+
