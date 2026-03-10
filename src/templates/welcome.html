@@ -70,7 +70,7 @@
       button.addEventListener("click", async () => {
         responseEl.textContent = "Contacting API...";
         try {
-          const res = await fetch("/api/welcome");
+          const res = await fetch("/web/welcome");
           if (!res.ok) throw new Error(`Request failed: ${res.status}`);
           const data = await res.json();
           responseEl.textContent = data.message ?? "API responded, but no message field.";
@@ -99,7 +99,7 @@
       setTimeout(() => map.invalidateSize(), 0);
 
       // Load airports
-      fetch("/api/airports")
+      fetch("/web/airports")
         .then((res) => {
           if (!res.ok) throw new Error(`Airports request failed: ${res.status}`);
           return res.json();

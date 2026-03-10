@@ -24,12 +24,12 @@ class Airport(BaseModel):
         default=None,
         description="Longitude in decimal degrees",
     )
-    arrivals_list: list[Flight] = Field(
+    arrivals_list: Optional[list[Flight]] = Field(
         default_factory=list,
         description="Flights scheduled to land at this airport",
     )
 
-    departures_list: list[Flight] = Field(
+    departures_list: Optional[list[Flight]] = Field(
         default_factory=list,
         description="Flights scheduled to depart from this airport",
     )
