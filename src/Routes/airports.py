@@ -1,10 +1,11 @@
 import re
+from pprint import pprint
 from typing import Any, List
 
 from fastapi import APIRouter, Depends
 from FlightRadar24 import FlightRadar24API
 from src.Models.airport import Airport
-
+from src.db.db_connection import MongoConnector
 
 router = APIRouter(
     prefix="/api/airport",
@@ -13,17 +14,36 @@ router = APIRouter(
 )
 fr_api = FlightRadar24API()
 
-@router.get("/search", tags=["System"])
+def get_mongo() -> MongoConnector:
+    return MongoConnector()
+
+@router.post("/save")
+async def save_airport(airport: Airport, mongo: MongoConnector = Depends(get_mongo)):
+    if await airport_exists(airport, mongo):
+        print("Duplicat")
+        return [{"Duplicated":"This airport already exists"}]
+    result = mongo.insert_one("FLIGHTSASL", airport.model_dump())
+
+    return {
+        "acknowledged": result.acknowledged,
+        "inserted_id": str(result.inserted_id),
+    }
+
+@router.get("/search")
 async def search_airport(name: str) -> list[Airport]:
     print(f"Cercant informació per a: {name}")
     resultats = fr_api.search(name)
-    aeroports = _parse_results(resultats)
+    aeroports = await _parse_results(resultats)
     if not aeroports:
         print("No s'han trobat aeroports.")
         return []
     return aeroports
 
-def _parse_results(resultats: Any) -> List[Airport]:
+async def airport_exists(airport: Airport, mongo: MongoConnector) -> bool:
+    result = mongo.find_one("FLIGHTSASL", {"name": airport.name})
+    return result is not None
+
+async def _parse_results(resultats: Any) -> List[Airport]:
     if not isinstance(resultats, dict):
         return []
     aeroports_raw = resultats.get("airport", []) or []
