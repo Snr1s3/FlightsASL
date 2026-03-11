@@ -12,7 +12,7 @@
 
         <div class="card">
             <p id="api-response">Arrivades/Sortides:</p>
-        <div id="search-results"></div>
+            <div id="search-results"></div>
         </div>
     </main>
     <script>
@@ -26,12 +26,20 @@
         const results = document.getElementById('search-results');
 
         document.addEventListener("DOMContentLoaded", () => {
+            if (!iata || iata === 'null' || iata === 'undefined') {
+                window.location.replace('/airports');
+                return;
+            }
             title.textContent = `${name || "Airport"} (${iata || "Airport"}) - ${flightMode}`;
             loadFlights();
         });
 
         async function loadFlights() {
-            const res = await fetch(`/api/airport/getFlights?iata=${iata}&type=${type}&limit=100&page=1`);
+            if (!iata || iata === 'null' || iata === 'undefined') {
+                window.location.replace('/airports');
+                return;
+            }
+            const res = await fetch(`/api/airport/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=100&page=1`);
             const flights = await res.json();
 
 

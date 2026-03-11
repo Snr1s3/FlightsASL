@@ -15,7 +15,9 @@
                 <p id="api-response">Airports List:</p>
                 <button id="delete-airports" class="airport-btn" type="button">Delete All</button>
             </div>
-        <div id="search-results"></div>
+            <div id="search-results">
+                <p>Empty List</p>
+            </div>
         </div>
     </main>
     <script>
@@ -65,7 +67,13 @@
         async function loadAirports() {
             const res = await fetch(`/api/airport/all`);
             const airports = await res.json();
-
+            if (!airports.length) {
+                results.innerHTML =  `
+                <p class="airport-coords">Empty List</p> 
+                `
+                currentAirports = [];
+                return;
+            }
             currentAirports = airports;
 
             results.innerHTML = airports.map((a, index) => `

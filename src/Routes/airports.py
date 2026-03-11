@@ -1,10 +1,13 @@
 import datetime
 import re
+from pathlib import Path
 from typing import Any, List, Sequence
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.templating import Jinja2Templates
 from FlightRadar24 import FlightRadar24API
+from FlightRadar24.errors import AirportNotFoundError
 
 try:
     from db.db_connection import MongoConnector
@@ -20,6 +23,9 @@ router = APIRouter(
     tags=["airport"],
     responses={404: {"description": "Not found"}}
 )
+BASE_DIR = Path(__file__).resolve().parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
 fr_api = FlightRadar24API()
 _DEFAULT_LIMIT = 100
 def get_mongo() -> MongoConnector:
@@ -52,14 +58,22 @@ async def search_airport(name: str) -> list[Airport]:
 @router.get("/all")
 async def get_all(mongo: MongoConnector = mongo_dependency) -> list[Airport]:
     aeroports = mongo.find("FLIGHTSASL","")
-    return aeroports
+    if aeroports:
+        return aeroports
+    return []
+
 
 @router.get("/getFlights")
-async def flights_airport(iata: str, type: int ,
-                        limit: int = _DEFAULT_LIMIT, page: int = 1) -> List[Flight]:
+async def flights_airport(request: Request, iata: str = None, type: int = 1,
+                        limit: int = _DEFAULT_LIMIT, page: int = 1) -> List[Flight] | Any:
+    if iata is None:
+        return templates.TemplateResponse("airports.html", {"request": request})
+    normalized_iata = (iata or "").strip()
+    if normalized_iata.lower() in {"", "null", "none", "undefined"}:
+        return []
     print(f"Cercant informació per a: {iata}")
     schedule_type = "arrivals" if type == 1 else "departures"
-    items = fetch(fr_api, schedule_type, iata, limit=limit, page=page)
+    items = fetch(fr_api, schedule_type, normalized_iata, limit=limit, page=page)
     print(schedule_type)
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     window_start = now_utc - datetime.timedelta(hours=1)
@@ -82,7 +96,10 @@ async def flights_airport(iata: str, type: int ,
     return flights
 def fetch(fr_api,schedule_type:str,
         iata:str, limit: int = _DEFAULT_LIMIT, page: int = 1) -> Sequence[dict]:
-    details = fr_api.get_airport_details(iata, flight_limit=limit, page=page)
+    try:
+        details = fr_api.get_airport_details(iata, flight_limit=limit, page=page)
+    except AirportNotFoundError:
+        return []
     schedule = (
         details
         .get("airport", {})

@@ -4,8 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from .flight import Flight
-
 
 class Airport(BaseModel):
     name: str = Field(..., description="Human-readable airport name")
@@ -24,13 +22,4 @@ class Airport(BaseModel):
     lon: Optional[float] = Field(
         default=None,
         description="Longitude in decimal degrees",
-    )
-    arrivals_list: Optional[list[Flight]] = Field(
-        default_factory=list,
-        description="Flights scheduled to land at this airport",
-    )
-
-    departures_list: Optional[list[Flight]] = Field(
-        default_factory=list,
-        description="Flights scheduled to depart from this airport",
     )
