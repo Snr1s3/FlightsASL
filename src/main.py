@@ -1,15 +1,20 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
-from src.Routes import airports, web
+try:
+	from Routes import airports, web
+except ModuleNotFoundError:
+	from src.Routes import airports, web
 
 app = FastAPI(title="FlightsASL API", version="0.1.0")
 
 BASE_DIR = Path(__file__).resolve().parent
-WELCOME_TEMPLATE = BASE_DIR / "templates" / "welcome.html"
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 
@@ -24,8 +29,18 @@ app.add_middleware(
 app.include_router(airports.router)
 app.include_router(web.router)
 @app.get("/", tags=["Pages"])
-async def welcome_page() -> FileResponse:
-	return FileResponse(WELCOME_TEMPLATE, media_type="text/html")
+async def welcome_page(request: Request):
+	return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/airports", tags=["Pages"])
+async def airports_page(request: Request):
+	return templates.TemplateResponse("airports.html", {"request": request})
+
+
+@app.get("/airport", tags=["Pages"])
+async def airport_page(request: Request):
+	return templates.TemplateResponse("airport.html", {"request": request})
 
 
 @app.get("/health", tags=["System"])

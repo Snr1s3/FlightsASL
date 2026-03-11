@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlightsASL</title>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='styles.css') }}?v=20260311" />
+</head>
+<body>
+    <main class="page-shell">
+        {% include "topbar.html" %}
+
+        <div class="card">
+            <p id="api-response">Arrivades/Sortides:</p>
+        <div id="search-results"></div>
+        </div>
+    </main>
+    <script>
+        const title = document.getElementById('api-response');
+        const qs = new URLSearchParams(window.location.search);
+        const name = qs.get('name');
+        const iata = qs.get('iata');
+        const type = Number(qs.get('type'));
+        const flightMode = type === 1 ? 'Arrivals' : 'Departures';
+        console.log({name, flightMode });
+        const results = document.getElementById('search-results');
+
+        document.addEventListener("DOMContentLoaded", () => {
+            title.textContent = `${name || "Airport"} (${iata || "Airport"}) - ${flightMode}`;
+            loadFlights();
+        });
+
+        async function loadFlights() {
+            const res = await fetch(`/api/airport/getFlights?iata=${iata}&type=${type}&limit=100&page=1`);
+            const flights = await res.json();
+
+
+            results.innerHTML = flights.map((a, index) => `
+                <div class="airport-item">
+                    <div class="airport-meta">
+                        <p class="airport-name">${a.number} - ${a.origin}</p> 
+                        <p class="airport-coords">E.T.A: ${a.eta} / Scheduled: ${a.arrival_info}</p> 
+                    </div> 
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

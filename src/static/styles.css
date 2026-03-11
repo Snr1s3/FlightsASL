@@ -1,0 +1,253 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg-1: #0b1a3b;
+    --bg-2: #1a3a6e;
+    --bg-3: #2e6bbb;
+    --text-main: #e8edf5;
+    --text-muted: rgba(255, 255, 255, 0.65);
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.22);
+    --brand: #7eb8f7;
+    --button: #2e6bbb;
+    --button-hover: #4a8fd4;
+}
+
+html, body {
+    height: 100%;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 60%, var(--bg-3) 100%);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding: 32px 24px 48px;
+}
+
+.page-shell {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.topbar .logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.topbar .logo span {
+    color: var(--brand);
+}
+
+.topbar nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.topbar nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.topbar nav a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+#api-response {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.55);
+    min-height: 1.4em;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    padding: 10px 10px 10px 20px;
+    gap: 8px;
+    transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+    border-color: var(--brand);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.search-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-bar button,
+.airport-btn {
+    background: var(--button);
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.search-bar button {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.airport-btn {
+    padding: 8px 14px;
+    font-weight: 600;
+}
+
+.search-bar button:hover,
+.airport-btn:hover {
+    background: var(--button-hover);
+}
+
+.search-bar button:active,
+.airport-btn:active {
+    transform: scale(0.96);
+}
+
+#search-results {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#search-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+#search-results::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+}
+
+#search-results::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+}
+
+#search-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.airport-item {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.airport-meta {
+    display: grid;
+    gap: 4px;
+}
+
+.airport-name {
+    font-weight: 650;
+}
+
+.airport-coords {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.airport-actions {
+margin-left: auto;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.airport-actions .airport-btn {
+min-width: 110px;
+text-align: center;
+}
+
+@media (max-width: 640px) {
+    body {
+        padding: 16px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .airport-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

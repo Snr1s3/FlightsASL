@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from FlightRadar24 import FlightRadar24API
 
-from src.db.db_connection import MongoConnector
+try:
+    from db.db_connection import MongoConnector
+except ModuleNotFoundError:
+    from src.db.db_connection import MongoConnector
 
 router = APIRouter(
     prefix="/web",
@@ -21,7 +24,7 @@ mongo_dependency = Depends(get_mongo)
 async def welcome_api() -> JSONResponse:
 	return JSONResponse({"message": "Welcome to FlightsASL!"})
 
-@router.get("/dropAll")
+@router.delete("/dropAll")
 async def drop_all(mongo: MongoConnector = mongo_dependency) -> JSONResponse:
     mongo.collection("FLIGHTSASL").drop()
     return JSONResponse({"message": "Collection dropped successfully"})
