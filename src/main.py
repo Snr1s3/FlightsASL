@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from Routes import flights
+
 try:
 	from Routes import airports, web
 except ModuleNotFoundError:
@@ -27,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(airports.router)
+app.include_router(flights.router)
 app.include_router(web.router)
 @app.get("/", tags=["Pages"])
 async def welcome_page(request: Request):

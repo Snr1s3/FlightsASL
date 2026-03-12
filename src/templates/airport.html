@@ -39,15 +39,15 @@
                 window.location.replace('/airports');
                 return;
             }
-            const res = await fetch(`/api/airport/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=100&page=1`);
+            const res = await fetch(`/api/flights/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=10&page=1`);
             const flights = await res.json();
 
-
+            console.log(flights)
             results.innerHTML = flights.map((a, index) => `
                 <div class="airport-item">
                     <div class="airport-meta">
-                        <p class="airport-name">${a.number} - ${a.origin}</p> 
-                        <p class="airport-coords">E.T.A: ${a.eta} / Scheduled: ${a.arrival_info}</p> 
+                        <p class="airport-name">${a.number} - / ${a.origin_iata} - ${a.origin} / ${a.destination_iata} - ${a.destination}</p> 
+                        <p class="airport-coords">Departure: ${a.scheduled_departure} / Arrival: ${a.scheduled_arrival}</p> 
                     </div> 
                 </div>
             `).join('');
