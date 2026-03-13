@@ -105,20 +105,6 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
     result = mongo.delete_many("flights", delete_query)
     print(f"removed stale flights: {result.deleted_count}")
 
-    for item in items:
-        ts = _extract_event_timestamp(item, schedule_type)
-        if ts is None:
-            print("excluded: no timestamp")
-            continue
-
-        event_dt_utc = datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)
-        print(
-            f"schedule_type={schedule_type} "
-            f"event_dt_utc={event_dt_utc} "
-            f"window_start={window_start} "
-            f"window_end={window_end} "
-            f"keep={window_start <= event_dt_utc <= window_end}"
-        )
     filtered_items = [
         item for item in items
         if _in_time_window(item, schedule_type, window_start, window_end)
