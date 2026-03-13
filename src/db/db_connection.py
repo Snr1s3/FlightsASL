@@ -19,12 +19,14 @@ class MongoConnector:
     def __init__(self) -> None:
         if getattr(self, "_initialized", False):
             return
+
         username = os.getenv("MONGO_USERNAME", "admin")
         password = os.getenv("MONGO_PASSWORD", "admin")
         host = os.getenv("MONGO_HOST", "localhost")
         port = os.getenv("MONGO_PORT", "27017")
         uri = f"mongodb://{username}:{password}@{host}:{port}"
         db_name = os.getenv("MONGO_DB", "FLIGHTSASL")
+
         self._client = MongoClient(uri)
         self._db = self._client[db_name]
         self._initialized = True

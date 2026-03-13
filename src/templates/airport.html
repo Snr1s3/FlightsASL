@@ -12,6 +12,12 @@
 
         <div class="card">
             <p id="api-response">Arrivades/Sortides:</p>
+            <select id="limit-select">
+                <option value="10"selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
             <div id="search-results"></div>
         </div>
     </main>
@@ -21,6 +27,8 @@
         const name = qs.get('name');
         const iata = qs.get('iata');
         const type = Number(qs.get('type'));
+        const select_limit =  document.getElementById('limit-select')
+        const limit = Number(select_limit.value);
         const flightMode = type === 1 ? 'Arrivals' : 'Departures';
         console.log({name, flightMode });
         const results = document.getElementById('search-results');
@@ -31,19 +39,32 @@
                 return;
             }
             title.textContent = `${name || "Airport"} (${iata || "Airport"}) - ${flightMode}`;
+            storeFlights()
             loadFlights();
         });
+        select_limit.addEventListener('change', loadFlights);
+        async function storeFlights() {
+            if (!iata || iata === 'null' || iata === 'undefined') {
+                window.location.replace('/airports');
+                return;
+            }
+            const res = await fetch(`/api/flights/storeFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=100&page=1`);
+            const flights = await res.json();
+        }
 
         async function loadFlights() {
             if (!iata || iata === 'null' || iata === 'undefined') {
                 window.location.replace('/airports');
                 return;
             }
-            const res = await fetch(`/api/flights/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=10&page=1`);
+
+            const limit = Number(select_limit.value || 10);
+
+            const res = await fetch(`/api/flights/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=${limit}&page=1`);
             const flights = await res.json();
 
             console.log(flights)
-            results.innerHTML = flights.map((a, index) => `
+            results.innerHTML = flights.map((a) => `
                 <div class="airport-item">
                     <div class="airport-meta">
                         <p class="airport-name">${a.number} - / ${a.origin_iata} - ${a.origin} / ${a.destination_iata} - ${a.destination}</p> 

@@ -37,3 +37,4 @@ docker-compose.override.yml
 # Poetry
 poetry.lock
 
+__pycache__

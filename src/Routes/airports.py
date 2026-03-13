@@ -29,7 +29,7 @@ async def save_airport(airport: Airport, mongo: MongoConnector = mongo_dependenc
     if await airport_exists(airport, mongo):
         print("Duplicat")
         return [{"Duplicated":"This airport already exists"}]
-    result = mongo.insert_one("FLIGHTSASL", airport.model_dump())
+    result = mongo.insert_one("airports", airport.model_dump())
 
     return {
         "acknowledged": result.acknowledged,
@@ -48,7 +48,7 @@ async def search_airport(name: str) -> list[Airport]:
 
 @router.get("/all")
 async def get_all(mongo: MongoConnector = mongo_dependency) -> list[Airport]:
-    aeroports = mongo.find("FLIGHTSASL", {})
+    aeroports = mongo.find("airports", {})
     if aeroports:
         return aeroports
     return []
@@ -60,7 +60,7 @@ async def get_airport_by_iata(iata: str, mongo: MongoConnector = mongo_dependenc
     if not normalized_iata:
         raise HTTPException(status_code=400, detail="iata is required")
 
-    saved = mongo.find_one("FLIGHTSASL", {"iata": normalized_iata})
+    saved = mongo.find_one("airports", {"iata": normalized_iata})
     if saved:
         return Airport.model_validate(saved)
 
@@ -73,7 +73,7 @@ async def get_airport_by_iata(iata: str, mongo: MongoConnector = mongo_dependenc
     raise HTTPException(status_code=404, detail="airport not found")
 
 async def airport_exists(airport: Airport, mongo: MongoConnector) -> bool:
-    result = mongo.find_one("FLIGHTSASL", {"name": airport.name})
+    result = mongo.find_one("airports", {"name": airport.name})
     return result is not None
     
 async def _parse_results(resultats: Any) -> List[Airport]:

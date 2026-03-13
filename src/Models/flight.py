@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
@@ -8,6 +8,18 @@ class Flight(BaseModel):
         extra="ignore",
         str_strip_whitespace=True,
         populate_by_name=True,
+    )
+    id_flight: Optional[str] = Field(
+        default=None,
+        description="Type: arrivals/departures",
+        min_length=8,
+        max_length=10,
+    )
+    t_flight: Optional[str] = Field(
+        default=None,
+        description="Type: arrivals/departures",
+        min_length=8,
+        max_length=10,
     )
     number: Optional[str] = Field(
         default=None,
