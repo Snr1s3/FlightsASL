@@ -19,8 +19,11 @@ This creates a virtual environment and installs FastAPI plus Uvicorn.
 ## Run the dev server
 
 ```bash
-poetry run uvicorn src.main:app --reload --port 8000
+poetry run poe dev
 ```
+
+The dev task tries `uvicorn main:app` first. If that import fails, it
+automatically runs the same command from `src/`.
 
 Visit <http://127.0.0.1:8000/docs> for the interactive Swagger UI or
 `http://127.0.0.1:8000/health` for a quick status check.

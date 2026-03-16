@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.templating import Jinja2Templates
 from FlightRadar24 import FlightRadar24API
 from FlightRadar24.errors import AirportNotFoundError
-from pymongo import ASCENDING
 
-from db.db_connection import MongoConnector
-from Routes.airports import get_airport_by_iata, get_mongo
+from Models.airport import Airport
+from db.db_connection import PostgresConnector
+from Routes.airports import _save_airport, _search_airport, airport_exists, get_airport_by_iata, get_pg
 
 try:
     from Models.flight import Flight
@@ -25,48 +25,73 @@ router = APIRouter(
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-mongo_dependency = Depends(get_mongo)
+pg_dependency = Depends(get_pg)
 fr_api = FlightRadar24API()
 _DEFAULT_LIMIT = 100
 
 @router.get("/getFlights")
 async def get_flights(request: Request, iata: str = None, type: int = 1,
                         limit: int = _DEFAULT_LIMIT, page: int = 1,
-                        mongo: MongoConnector = mongo_dependency):
-    schedule_type = "arrivals" if type == 1 else "departures"
+                        pg: PostgresConnector = pg_dependency):
+    normalized_iata = (iata or "").strip().upper()
+    if not normalized_iata:
+        return []
+    print(type)
     if type == 1:
-        flights = list(
-            mongo.collection("flights").find(
-                {
-                    "t_flight": schedule_type,
-                    "destination_iata": iata,
-                },
-                {
-                    "_id": 0,
-                },
-            ).sort("scheduled_arrival", ASCENDING).limit(limit)
+        flights = pg.execute(
+            """
+            SELECT
+                id_flight,
+                number,
+                origin,
+                origin_iata,
+                destination,
+                destination_iata,
+                scheduled_departure,
+                utc_departure,
+                scheduled_arrival,
+                utc_arrival
+            FROM flights
+            WHERE destination_iata = %s
+            ORDER BY scheduled_arrival ASC
+            LIMIT %s
+            """,
+            (normalized_iata, limit),
+            fetch="all",
         )
+        print(flights)
         print(len(flights))
         return flights
     else:
-        flights = list(
-            mongo.collection("flights").find(
-                {
-                    "t_flight": schedule_type,
-                    "origin_iata": iata,
-                },
-                {
-                    "_id": 0,
-                },
-            ).sort("scheduled_departure", ASCENDING).limit(limit)
+        flights = pg.execute(
+            """
+            SELECT
+                id_flight,
+                number,
+                origin,
+                origin_iata,
+                destination,
+                destination_iata,
+                scheduled_departure,
+                utc_departure,
+                scheduled_arrival,
+                utc_arrival
+            FROM flights
+            WHERE destination_iata = %s
+            ORDER BY scheduled_arrival ASC
+            LIMIT %s
+            """,
+            (normalized_iata, limit),
+            fetch="all",
         )
+        print(limit)
         print(len(flights))
         return flights
 
-@router.get("/storeFlights")
+@router.post("/storeFlights")
 async def store_flights(request: Request, iata: str = None, type: int = 1,
                         limit: int = _DEFAULT_LIMIT, page: int = 1,
-                        mongo: MongoConnector = mongo_dependency):
+                        pg: PostgresConnector = pg_dependency):
     if iata is None:
         return templates.TemplateResponse("airports.html", {"request": request})
     normalized_iata = (iata or "").strip()
@@ -83,51 +108,61 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
     window_start = now_utc - datetime.timedelta(hours=1)
     window_end = now_utc + datetime.timedelta(hours=2)
 
-    delete_query = {
-        "$or": [
-            {
-                "t_flight": "arrivals",
-                "$or": [
-                    {"scheduled_arrival": {"$lt": window_start}},
-                    {"scheduled_arrival": {"$gt": window_end}},
-                ],
-            },
-            {
-                "t_flight": "departures",
-                "$or": [
-                    {"scheduled_departure": {"$lt": window_start}},
-                    {"scheduled_departure": {"$gt": window_end}},
-                ],
-            },
-        ]
-    }
-
-    result = mongo.delete_many("flights", delete_query)
-    print(f"removed stale flights: {result.deleted_count}")
-
     filtered_items = [
         item for item in items
         if _in_time_window(item, schedule_type, window_start, window_end)
     ]
     print(f"items after time filter: {len(filtered_items)}")
     
-    flights = [await _build_flight(item, schedule_type, iata) for item in items]
+    flights = [await _build_flight(item, schedule_type, iata) for item in filtered_items]
     
 
     if not flights:
         print("No flight data available.")
         return []
     for flight in flights:
-        exists = await flight_exists(flight, mongo)
+        exists = await flight_exists(flight, pg)
         if not exists:
-            mongo.insert_one("flights", flight.model_dump())
+            pg.insert_one(
+                """
+                INSERT INTO flights (
+                    id_flight,
+                    number,
+                    origin,
+                    origin_iata,
+                    destination,
+                    destination_iata,
+                    scheduled_departure,
+                    utc_departure,
+                    scheduled_arrival,
+                    utc_arrival
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    flight.id_flight,
+                    flight.number,
+                    flight.origin,
+                    flight.origin_iata,
+                    flight.destination,
+                    flight.destination_iata,
+                    flight.scheduled_departure,
+                    flight.utc_departure,
+                    flight.scheduled_arrival,
+                    flight.utc_arrival,
+                ),
+            )
 
     return []
 
-async def flight_exists(flight: Flight, mongo: MongoConnector) -> bool:
+async def flight_exists(flight: Flight, pg: PostgresConnector) -> bool:
     if not flight.id_flight:
         return False
-    result = mongo.find_one("flights", {"id_flight": flight.id_flight})
+    result = pg.execute(
+        "SELECT 1 FROM flights WHERE id_flight = %s LIMIT 1",
+        (flight.id_flight,),
+        fetch="one",
+    )
     return result is not None
 
 def fetch(fr_api, schedule_type: str,
@@ -157,8 +192,13 @@ async def _build_flight(item: dict, schedule_type: str, iata_airport_search : st
     origin_key = "origin"
     dest_key = "destination"
     airport_section = flight.get("airport", {}) or {}
+    utc_departure = None
+    utc_arrival = None
+    departure = "-"
+    arrival = "-"
+
     if schedule_type == "departures":
-        origin_name = (await get_airport_by_iata(iata_airport_search, mongo=get_mongo())).name
+        origin_name = (await get_airport_by_iata(iata_airport_search, pg=get_pg())).name
         origin_iata = iata_airport_search
         dest_info = airport_section.get(dest_key, {}) or {}
         dest_name = dest_info.get("name") or "-"
@@ -170,11 +210,13 @@ async def _build_flight(item: dict, schedule_type: str, iata_airport_search : st
         dest_timezone_name = (dest_info.get("timezone") or {}).get("name")
 
         time_info = flight.get("time", {}) or {}
+        utc_departure = time_info.get("scheduled", {}).get("departure")
+        utc_arrival = time_info.get("scheduled", {}).get("arrival")
         departure = describe(time_info.get("scheduled", {}).get("departure"), origin_timezone_name)
         arrival = describe(time_info.get("scheduled", {}).get("arrival"), dest_timezone_name)
 
     if schedule_type == "arrivals":
-        dest_name = (await get_airport_by_iata(iata_airport_search, mongo=get_mongo())).name
+        dest_name = (await get_airport_by_iata(iata_airport_search, pg=get_pg())).name
         destination_iata = iata_airport_search
         origin_info = airport_section.get(origin_key, {}) or {}
         origin_name = origin_info.get("name") or "-"
@@ -186,19 +228,23 @@ async def _build_flight(item: dict, schedule_type: str, iata_airport_search : st
         dest_timezone_name = (dest_info.get("timezone") or {}).get("name")
 
         time_info = flight.get("time", {}) or {}
+        utc_departure = time_info.get("scheduled", {}).get("departure")
         departure = describe(time_info.get("scheduled", {}).get("departure"), origin_timezone_name)
+        utc_arrival = time_info.get("scheduled", {}).get("arrival")        
         arrival = describe(time_info.get("scheduled", {}).get("arrival"), dest_timezone_name)
+
 
     return Flight(
         id_flight=flight_id,
-        t_flight=schedule_type,
         number=num,
         origin=origin_name,
         origin_iata=origin_iata,
         destination=dest_name,
         destination_iata=destination_iata,
         scheduled_departure = departure,
-        scheduled_arrival = arrival
+        scheduled_arrival = arrival,
+        utc_arrival=utc_arrival,
+        utc_departure=utc_departure
     )
 
 def describe(timestamp: int | float | None, tz_name: str | None = None) -> str:

@@ -10,6 +10,7 @@ requires-python = ">=3.11,<4.0"
 dependencies = [
   "fastapi>=0.110.0,<0.111.0",
   "jinja2>=3.1.0,<4.0.0",
+  "psycopg2-binary>=2.9.9,<3.0.0",
   "uvicorn[standard]>=0.29.0,<0.30.0",
 ]
 
@@ -23,6 +24,7 @@ poethepoet = { version = "^0.30.0", python = ">=3.8" }
 [tool.poe.tasks]
 lint = "ruff check ."
 lint-fix = "ruff check . --fix"
+dev = { shell = "cd src && uvicorn main:app --reload --port 8000" }
 
 [tool.ruff]
 line-length = 100

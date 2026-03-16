@@ -13,6 +13,7 @@
         <div class="card">
             <p id="api-response">Arrivades/Sortides:</p>
             <select id="limit-select">
+                <option value="1">1</option>
                 <option value="10"selected>10</option>
                 <option value="20">20</option>
                 <option value="50">50</option>
@@ -48,7 +49,12 @@
                 window.location.replace('/airports');
                 return;
             }
-            const res = await fetch(`/api/flights/storeFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=100&page=1`);
+            
+            const limit = Number(select_limit.value || 10);
+            const res = await fetch(
+                `/api/flights/storeFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=${limit}&page=1`,
+                { method: 'POST' }
+            );
             const flights = await res.json();
         }
 

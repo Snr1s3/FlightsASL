@@ -3,9 +3,9 @@ from fastapi.responses import JSONResponse
 from FlightRadar24 import FlightRadar24API
 
 try:
-    from db.db_connection import MongoConnector
+    from db.db_connection import PostgresConnector
 except ModuleNotFoundError:
-    from src.db.db_connection import MongoConnector
+    from src.db.db_connection import PostgresConnector
 
 router = APIRouter(
     prefix="/web",
@@ -15,16 +15,19 @@ router = APIRouter(
 
 fr_api = FlightRadar24API()
 
-def get_mongo() -> MongoConnector:
-    return MongoConnector()
+def get_pg() -> PostgresConnector:
+    return PostgresConnector()
 
-mongo_dependency = Depends(get_mongo)
+pg_dependency = Depends(get_pg)
 
 @router.get("/welcome")
 async def welcome_api() -> JSONResponse:
 	return JSONResponse({"message": "Welcome to FlightsASL!"})
 
 @router.delete("/dropAll")
-async def drop_all(mongo: MongoConnector = mongo_dependency) -> JSONResponse:
-    mongo.collection("FLIGHTSASL").drop()
-    return JSONResponse({"message": "Collection dropped successfully"})
+async def drop_all(pg: PostgresConnector = pg_dependency) -> JSONResponse:
+    pg.execute("TRUNCATE TABLE flights RESTART IDENTITY CASCADE", fetch="none")
+    pg.execute("TRUNCATE TABLE airports RESTART IDENTITY CASCADE", fetch="none")
+    return JSONResponse({"message": "Tables truncated successfully"})
+
+

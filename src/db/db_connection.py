@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, Optional
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from typing import Optional, Iterable, Any
 
-from pymongo import MongoClient
-from pymongo.collection import Collection
-from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
+class PostgresConnector:
+    _instance: Optional["PostgresConnector"] = None
 
-
-class MongoConnector:
-    _instance: Optional["MongoConnector"] = None
-
-    def __new__(cls, *args, **kwargs) -> "MongoConnector":
+    def __new__(cls, *args, **kwargs) -> "PostgresConnector":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -20,40 +17,62 @@ class MongoConnector:
         if getattr(self, "_initialized", False):
             return
 
-        username = os.getenv("MONGO_USERNAME", "admin")
-        password = os.getenv("MONGO_PASSWORD", "admin")
-        host = os.getenv("MONGO_HOST", "localhost")
-        port = os.getenv("MONGO_PORT", "27017")
-        uri = f"mongodb://{username}:{password}@{host}:{port}"
-        db_name = os.getenv("MONGO_DB", "FLIGHTSASL")
+        user = os.getenv("POSTGRES_USER", "admin")
+        password = os.getenv("POSTGRES_PASSWORD", "admin")
+        host = os.getenv("POSTGRES_HOST", "localhost")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        dbname = os.getenv("POSTGRES_DB", "FLIGHTSASL")
 
-        self._client = MongoClient(uri)
-        self._db = self._client[db_name]
+        self._conn = psycopg2.connect(
+            dbname=dbname,
+            user=user,
+            password=password,
+            host=host,
+            port=port,
+            cursor_factory=RealDictCursor
+        )
         self._initialized = True
 
-    def collection(self, name: str) -> Collection:
-        return self._db[name]
+    def execute(self, query: str, params: Optional[Iterable[Any]] = None, fetch: str = "all"):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(query, params)
+                if fetch == "one":
+                    return cur.fetchone()
+                if fetch == "all":
+                    return cur.fetchall()
+                return None
+        except psycopg2.Error:
+            self._conn.rollback()
+            raise
 
-    def insert_one(self, collection: str, document: dict) -> InsertOneResult:
-        return self.collection(collection).insert_one(document)
+    def insert_one(self, query: str, params: Iterable[Any]):
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(query, params)
+                self._conn.commit()
+                return cur.rowcount
+        except psycopg2.Error:
+            self._conn.rollback()
+            raise
 
-    def insert_many(self, collection: str, documents: Iterable[dict]):
-        return self.collection(collection).insert_many(documents)
+    def insert_many(self, query: str, params_list: Iterable[Iterable[Any]]):
+        with self._conn.cursor() as cur:
+            cur.executemany(query, params_list)
+            self._conn.commit()
+            return cur.rowcount
 
-    def find_one(self, collection: str, query: dict) -> Optional[dict]:
-        return self.collection(collection).find_one(query)
+    def update_one(self, query: str, params: Iterable[Any]):
+        with self._conn.cursor() as cur:
+            cur.execute(query, params)
+            self._conn.commit()
+            return cur.rowcount
 
-    def find(self, collection: str, query: dict, limit: int = 0) -> list[dict]:
-        cursor = self.collection(collection).find(query)
-        if limit:
-            cursor = cursor.limit(limit)
-        return list(cursor)
+    def delete_one(self, query: str, params: Iterable[Any]):
+        with self._conn.cursor() as cur:
+            cur.execute(query, params)
+            self._conn.commit()
+            return cur.rowcount
 
-    def update_one(self, collection: str, query: dict, update: dict) -> UpdateResult:
-        return self.collection(collection).update_one(query, update)
-
-    def delete_one(self, collection: str, query: dict) -> DeleteResult:
-        return self.collection(collection).delete_one(query)
-
-    def delete_many(self, collection: str, query: dict) -> DeleteResult:
-        return self.collection(collection).delete_many(query)
+    def close(self):
+        self._conn.close()

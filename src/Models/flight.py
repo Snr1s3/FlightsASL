@@ -15,12 +15,6 @@ class Flight(BaseModel):
         min_length=8,
         max_length=10,
     )
-    t_flight: Optional[str] = Field(
-        default=None,
-        description="Type: arrivals/departures",
-        min_length=8,
-        max_length=10,
-    )
     number: Optional[str] = Field(
         default=None,
         description="Published flight identifier (e.g., AS123)",
@@ -35,7 +29,7 @@ class Flight(BaseModel):
     )
     origin_iata: Optional[str] = Field(
         default=None,
-        description="Airport being queried (e.g., BCN)",
+        description="Origin airport IATA code (e.g., JFK)",
         min_length=3,
         max_length=8,
     )
@@ -47,7 +41,7 @@ class Flight(BaseModel):
     )
     destination_iata: Optional[str] = Field(
         default=None,
-        description="Airport being queried (e.g., BCN)",
+        description="Destination airport IATA code (e.g., BCN)",
         min_length=3,
         max_length=8,
     )
@@ -57,13 +51,20 @@ class Flight(BaseModel):
         validation_alias=AliasChoices("departure_info", "arrival_info"),
         max_length=40,
     )
+    utc_departure: Optional[int] = Field(
+        default=None,
+        description="Scheduled departure as UTC milliseconds",
+    )
     scheduled_arrival: Optional[str] = Field(
         default=None,
         description="Scheduled arrival formatted text",
         validation_alias=AliasChoices("departure_info", "arrival_info"),
         max_length=40,
     )
-
+    utc_arrival: Optional[int] = Field(
+        default=None,
+        description="Scheduled arrival as UTC milliseconds",
+    )
     def __str__(self) -> str:
         return (
             f"Flight({self.number}| "

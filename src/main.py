@@ -12,8 +12,8 @@ try:
 except ModuleNotFoundError:
 	from src.Routes import airports, web
 
-app = FastAPI(title="FlightsASL API", version="0.1.0", docs_url=None, redoc_url=None)
-
+#app = FastAPI(title="FlightsASL API", version="0.1.0", docs_url=None, redoc_url=None)
+app = FastAPI(title="FlightsASL API", version="0.1.0")
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")

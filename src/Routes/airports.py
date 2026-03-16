@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from FlightRadar24 import FlightRadar24API
 
 try:
-    from db.db_connection import MongoConnector
+    from db.db_connection import PostgresConnector
     from Models.airport import Airport
 except ModuleNotFoundError:
-    from src.db.db_connection import MongoConnector
+    from src.db.db_connection import PostgresConnector
     from src.Models.airport import Airport
 
 router = APIRouter(
@@ -19,25 +19,39 @@ router = APIRouter(
 
 fr_api = FlightRadar24API()
 
-def get_mongo() -> MongoConnector:
-    return MongoConnector()
+def get_pg() -> PostgresConnector:
+    return PostgresConnector()
 
-mongo_dependency = Depends(get_mongo)
+pg_dependency = Depends(get_pg)
 
 @router.post("/save")
-async def save_airport(airport: Airport, mongo: MongoConnector = mongo_dependency):
-    if await airport_exists(airport, mongo):
+async def save_airport(airport: Airport, pg: PostgresConnector = pg_dependency):
+    result = await _save_airport(airport, pg)
+    return result
+
+async def _save_airport(airport: Airport, pg: PostgresConnector):
+    if await airport_exists(airport.iata, pg):
         print("Duplicat")
         return [{"Duplicated":"This airport already exists"}]
-    result = mongo.insert_one("airports", airport.model_dump())
+    result = pg.insert_one(
+        """
+        INSERT INTO airports (name, iata, icao, lat, lon)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (airport.name, airport.iata, airport.icao, airport.lat, airport.lon),
+    )
 
     return {
-        "acknowledged": result.acknowledged,
-        "inserted_id": str(result.inserted_id),
+        "inserted": result > 0,
+        "rows_affected": result,
     }
 
 @router.get("/search")
 async def search_airport(name: str) -> list[Airport]:
+    aeroports = await _search_airport(name)
+    return aeroports
+
+async def _search_airport(name: str) -> list[Airport]:
     print(f"Cercant informació per a: {name}")
     resultats = fr_api.search(name)
     aeroports = await _parse_results(resultats)
@@ -47,20 +61,24 @@ async def search_airport(name: str) -> list[Airport]:
     return aeroports
 
 @router.get("/all")
-async def get_all(mongo: MongoConnector = mongo_dependency) -> list[Airport]:
-    aeroports = mongo.find("airports", {})
+async def get_all(pg: PostgresConnector = pg_dependency) -> list[Airport]:
+    aeroports = pg.execute("SELECT * FROM airports ORDER BY iata", fetch="all")
     if aeroports:
         return aeroports
     return []
 
 
 
-async def get_airport_by_iata(iata: str, mongo: MongoConnector = mongo_dependency) -> Airport:
+async def get_airport_by_iata(iata: str, pg: PostgresConnector = pg_dependency) -> Airport:
     normalized_iata = (iata or "").strip().upper()
     if not normalized_iata:
         raise HTTPException(status_code=400, detail="iata is required")
 
-    saved = mongo.find_one("airports", {"iata": normalized_iata})
+    saved = pg.execute(
+        "SELECT name, iata, icao, lat, lon FROM airports WHERE UPPER(iata) = %s LIMIT 1",
+        (normalized_iata,),
+        fetch="one",
+    )
     if saved:
         return Airport.model_validate(saved)
 
@@ -72,8 +90,12 @@ async def get_airport_by_iata(iata: str, mongo: MongoConnector = mongo_dependenc
 
     raise HTTPException(status_code=404, detail="airport not found")
 
-async def airport_exists(airport: Airport, mongo: MongoConnector) -> bool:
-    result = mongo.find_one("airports", {"name": airport.name})
+async def airport_exists(iata, pg: PostgresConnector) -> bool:
+    result = pg.execute(
+        "SELECT 1 FROM airports WHERE iata = %s LIMIT 1",
+        (iata,),
+        fetch="one",
+    )
     return result is not None
     
 async def _parse_results(resultats: Any) -> List[Airport]:

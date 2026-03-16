@@ -13,7 +13,7 @@
         <div class="card">
             <div class="section-head">
                 <p id="api-response">Airports List:</p>
-                <button id="delete-airports" class="airport-btn" type="button">Delete All</button>
+                <button id="delete-all" class="airport-btn" type="button">Delete All</button>
             </div>
             <div id="search-results">
                 <p>Empty List</p>
@@ -22,7 +22,7 @@
     </main>
     <script>
         const results = document.getElementById('search-results');
-        const delete_all = document.getElementById('delete-airports');
+        const delete_all = document.getElementById('delete-all');
 
         let currentAirports = [];
         delete_all.addEventListener('click', () => delete_airports());
@@ -62,7 +62,7 @@
 
             const data = await res.json();
             console.log(data);
-            await loadAirports(); // refresh list
+            await loadAirports(); 
         }
         async function loadAirports() {
             const res = await fetch(`/api/airport/all`);
