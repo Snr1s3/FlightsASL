@@ -26,19 +26,19 @@ pg_dependency = Depends(get_pg)
 
 @router.post("/save")
 async def save_airport(airport: Airport, pg: PostgresConnector = pg_dependency):
-    result = await _save_airport(airport, pg)
+    result = await _save_airport(airport, pg, True)
     return result
 
-async def _save_airport(airport: Airport, pg: PostgresConnector):
+async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
     if await airport_exists(airport.iata, pg):
         print("Duplicat")
         return [{"Duplicated":"This airport already exists"}]
     result = pg.insert_one(
         """
-        INSERT INTO airports (name, iata, icao, lat, lon)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO airports (name, iata, icao, lat, lon, search)
+        VALUES (%s, %s, %s, %s, %s,%s)
         """,
-        (airport.name, airport.iata, airport.icao, airport.lat, airport.lon),
+        (airport.name, airport.iata, airport.icao, airport.lat, airport.lon, search),
     )
 
     return {
@@ -62,7 +62,7 @@ async def _search_airport(name: str) -> list[Airport]:
 
 @router.get("/all")
 async def get_all(pg: PostgresConnector = pg_dependency) -> list[Airport]:
-    aeroports = pg.execute("SELECT * FROM airports ORDER BY iata", fetch="all")
+    aeroports = pg.execute("SELECT * FROM airports WHERE search IS TRUE ORDER BY iata", fetch="all")
     if aeroports:
         return aeroports
     return []

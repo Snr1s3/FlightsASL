@@ -32,61 +32,50 @@ _DEFAULT_LIMIT = 100
 @router.get("/getFlights")
 async def get_flights(request: Request, iata: str = None, type: int = 1,
                         limit: int = _DEFAULT_LIMIT, page: int = 1,
-                        pg: PostgresConnector = pg_dependency):
+                        pg: PostgresConnector = pg_dependency, asc: int =1 ):
     normalized_iata = (iata or "").strip().upper()
     if not normalized_iata:
         return []
+    airport_id = await _airport_id_from_iata(normalized_iata, pg)
+    if airport_id is None:
+        return []
+    order_dir = "ASC" if asc == 1 else "DESC"
     print(type)
+    select = """
+            SELECT
+                f.id_flight,
+                f.number,
+                ao.name AS origin,
+                ao.iata AS origin_iata,
+                ad.name AS destination,
+                ad.iata AS destination_iata,
+                f.scheduled_departure,
+                f.utc_departure,
+                f.scheduled_arrival,
+                f.utc_arrival
+            FROM flights f
+            LEFT JOIN airports ao ON ao.id = f.origin_airport_id
+            LEFT JOIN airports ad ON ad.id = f.destination_airport_id
+            """
     if type == 1:
-        flights = pg.execute(
-            """
-            SELECT
-                id_flight,
-                number,
-                origin,
-                origin_iata,
-                destination,
-                destination_iata,
-                scheduled_departure,
-                utc_departure,
-                scheduled_arrival,
-                utc_arrival
-            FROM flights
-            WHERE destination_iata = %s
-            ORDER BY scheduled_arrival ASC
+        select += f"""
+            WHERE f.destination_airport_id = %s
+            ORDER BY f.scheduled_arrival {order_dir}
             LIMIT %s
-            """,
-            (normalized_iata, limit),
-            fetch="all",
-        )
-        print(flights)
-        print(len(flights))
-        return flights
+                 """
     else:
-        flights = pg.execute(
-            """
-            SELECT
-                id_flight,
-                number,
-                origin,
-                origin_iata,
-                destination,
-                destination_iata,
-                scheduled_departure,
-                utc_departure,
-                scheduled_arrival,
-                utc_arrival
-            FROM flights
-            WHERE destination_iata = %s
-            ORDER BY scheduled_arrival ASC
+        select += f"""
+            WHERE f.origin_airport_id = %s
+            ORDER BY f.scheduled_departure {order_dir}
             LIMIT %s
-            """,
-            (normalized_iata, limit),
-            fetch="all",
-        )
-        print(limit)
-        print(len(flights))
-        return flights
+            """
+
+    flights = pg.execute(
+        select,
+        (airport_id, limit),
+        fetch="all",
+    )
+    return flights
 
 @router.post("/storeFlights")
 async def store_flights(request: Request, iata: str = None, type: int = 1,
@@ -123,29 +112,27 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
     for flight in flights:
         exists = await flight_exists(flight, pg)
         if not exists:
+            origin_airport_id = await _ensure_airport_id(flight.origin_iata, flight.origin, pg)
+            destination_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
             pg.insert_one(
                 """
                 INSERT INTO flights (
                     id_flight,
                     number,
-                    origin,
-                    origin_iata,
-                    destination,
-                    destination_iata,
+                    origin_airport_id,
+                    destination_airport_id,
                     scheduled_departure,
                     utc_departure,
                     scheduled_arrival,
                     utc_arrival
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     flight.id_flight,
                     flight.number,
-                    flight.origin,
-                    flight.origin_iata,
-                    flight.destination,
-                    flight.destination_iata,
+                    origin_airport_id,
+                    destination_airport_id,
                     flight.scheduled_departure,
                     flight.utc_departure,
                     flight.scheduled_arrival,
@@ -164,6 +151,48 @@ async def flight_exists(flight: Flight, pg: PostgresConnector) -> bool:
         fetch="one",
     )
     return result is not None
+
+
+async def _airport_id_from_iata(iata: str, pg: PostgresConnector) -> int | None:
+    if not iata:
+        return None
+    row = pg.execute(
+        "SELECT id FROM airports WHERE UPPER(iata) = %s LIMIT 1",
+        (iata.strip().upper(),),
+        fetch="one",
+    )
+    return row.get("id") if row else None
+
+
+async def _ensure_airport_id(iata: str | None, name: str | None, pg: PostgresConnector) -> int | None:
+    normalized_iata = (iata or "").strip().upper()
+    if not normalized_iata or normalized_iata in {"-", "N/A", "NULL", "NONE", "UNDEFINED"}:
+        return None
+
+    existing = pg.execute(
+        "SELECT id FROM airports WHERE UPPER(iata) = %s LIMIT 1",
+        (normalized_iata,),
+        fetch="one",
+    )
+    if existing:
+        return existing.get("id")
+
+    airports = await _search_airport(normalized_iata)
+    if not airports:
+        return None
+
+    selected = next(
+        (a for a in airports if (a.iata or "").strip().upper() == normalized_iata),
+        airports[0],
+    )
+    await _save_airport(selected, pg, False)
+
+    inserted = pg.execute(
+        "SELECT id FROM airports WHERE UPPER(iata) = %s LIMIT 1",
+        (normalized_iata,),
+        fetch="one",
+    )
+    return inserted.get("id") if inserted else None
 
 def fetch(fr_api, schedule_type: str,
         iata: str, limit: int = _DEFAULT_LIMIT, page: int = 1) -> Sequence[dict]:

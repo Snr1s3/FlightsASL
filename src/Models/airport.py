@@ -23,3 +23,7 @@ class Airport(BaseModel):
         default=None,
         description="Longitude in decimal degrees",
     )
+    search: Optional[bool] = Field(
+        default= False,
+        description="Was searched by the user"
+    )
