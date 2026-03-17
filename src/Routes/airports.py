@@ -4,12 +4,9 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from FlightRadar24 import FlightRadar24API
 
-try:
-    from db.db_connection import PostgresConnector
-    from Models.airport import Airport
-except ModuleNotFoundError:
-    from src.db.db_connection import PostgresConnector
-    from src.Models.airport import Airport
+from Routes.web import get_pg
+from db.db_connection import PostgresConnector
+from Models.airport import Airport
 
 router = APIRouter(
     prefix="/api/airport",
@@ -18,9 +15,6 @@ router = APIRouter(
 )
 
 fr_api = FlightRadar24API()
-
-def get_pg() -> PostgresConnector:
-    return PostgresConnector()
 
 pg_dependency = Depends(get_pg)
 
@@ -31,7 +25,6 @@ async def save_airport(airport: Airport, pg: PostgresConnector = pg_dependency):
 
 async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
     if await airport_exists(airport.iata, pg):
-        print("Duplicat")
         return [{"Duplicated":"This airport already exists"}]
     result = pg.insert_one(
         """
@@ -40,7 +33,6 @@ async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
         """,
         (airport.name, airport.iata, airport.icao, airport.lat, airport.lon, search),
     )
-
     return {
         "inserted": result > 0,
         "rows_affected": result,

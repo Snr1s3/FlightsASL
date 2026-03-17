@@ -74,5 +74,8 @@ class PostgresConnector:
             self._conn.commit()
             return cur.rowcount
 
+    def get_pg() -> PostgresConnector:
+        return PostgresConnector()
+
     def close(self):
         self._conn.close()

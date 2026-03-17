@@ -62,10 +62,11 @@ async def get_flights(request: Request, iata: str = None, type: int = 1,
             WHERE f.destination_airport_id = %s
             ORDER BY f.scheduled_arrival {order_dir}
             LIMIT %s
-                 """
+                """
     else:
         select += f"""
             WHERE f.origin_airport_id = %s
+              AND f.utc_departure >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint
             ORDER BY f.scheduled_departure {order_dir}
             LIMIT %s
             """
@@ -94,7 +95,7 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
     print(f"total items from API: {len(items)}")
 
     now_utc = datetime.datetime.now(datetime.timezone.utc)
-    window_start = now_utc - datetime.timedelta(hours=1)
+    window_start = now_utc - datetime.timedelta(hours=3)
     window_end = now_utc + datetime.timedelta(hours=2)
 
     filtered_items = [
