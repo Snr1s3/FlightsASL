@@ -60,14 +60,15 @@ async def get_flights(request: Request, iata: str = None, type: int = 1,
     if type == 1:
         select += f"""
             WHERE f.destination_airport_id = %s
-            ORDER BY f.scheduled_arrival {order_dir}
+            AND f.utc_arrival >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint
+            ORDER BY f.scheduled_arrival {order_dir} , f.number ASC
             LIMIT %s
                 """
     else:
         select += f"""
             WHERE f.origin_airport_id = %s
               AND f.utc_departure >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint
-            ORDER BY f.scheduled_departure {order_dir}
+                        ORDER BY f.utc_departure {order_dir}, f.number ASC
             LIMIT %s
             """
 
@@ -111,10 +112,10 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
         print("No flight data available.")
         return []
     for flight in flights:
-        exists = await flight_exists(flight, pg)
+        origin_airport_id = await _ensure_airport_id(flight.origin_iata, flight.origin, pg)
+        destination_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
+        exists = await flight_exists(flight, pg, origin_airport_id, destination_airport_id)
         if not exists:
-            origin_airport_id = await _ensure_airport_id(flight.origin_iata, flight.origin, pg)
-            destination_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
             pg.insert_one(
                 """
                 INSERT INTO flights (
@@ -128,6 +129,7 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
                     utc_arrival
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id_flight) DO NOTHING
                 """,
                 (
                     flight.id_flight,
@@ -143,12 +145,40 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
 
     return []
 
-async def flight_exists(flight: Flight, pg: PostgresConnector) -> bool:
-    if not flight.id_flight:
-        return False
+async def flight_exists(
+    flight: Flight,
+    pg: PostgresConnector,
+    origin_airport_id: int | None,
+    destination_airport_id: int | None,
+) -> bool:
+    if flight.id_flight:
+        result = pg.execute(
+            "SELECT 1 FROM flights WHERE id_flight = %s LIMIT 1",
+            (flight.id_flight,),
+            fetch="one",
+        )
+        if result is not None:
+            return True
+
+    # Fallback for records where provider id is missing.
     result = pg.execute(
-        "SELECT 1 FROM flights WHERE id_flight = %s LIMIT 1",
-        (flight.id_flight,),
+        """
+        SELECT 1
+        FROM flights
+        WHERE number IS NOT DISTINCT FROM %s
+          AND origin_airport_id IS NOT DISTINCT FROM %s
+          AND destination_airport_id IS NOT DISTINCT FROM %s
+          AND utc_departure IS NOT DISTINCT FROM %s
+          AND utc_arrival IS NOT DISTINCT FROM %s
+        LIMIT 1
+        """,
+        (
+            flight.number,
+            origin_airport_id,
+            destination_airport_id,
+            flight.utc_departure,
+            flight.utc_arrival,
+        ),
         fetch="one",
     )
     return result is not None
@@ -213,12 +243,14 @@ def fetch(fr_api, schedule_type: str,
 async def _build_flight(item: dict, schedule_type: str, iata_airport_search : str) -> Flight:
     flight = item.get("flight", {}) or {}
     identification = flight.get("identification", {}) or {}
-    flight_id=flight.get("identification", {}).get("id",{})
+    raw_flight_id = identification.get("id")
+    flight_id = str(raw_flight_id).strip() if raw_flight_id else None
     num = (
         identification.get("number", {}).get("default")
         or identification.get("id")
         or "-"
     )
+    print(flight.get("identification", {}))
     origin_key = "origin"
     dest_key = "destination"
     airport_section = flight.get("airport", {}) or {}

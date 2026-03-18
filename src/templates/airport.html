@@ -23,6 +23,7 @@
                 <option value="1"selected>Scheduled ASC</option>
                 <option value="2">Scheduled DESC</option>
             </select>
+            <button id="refresh">Refresh</button>
             <div id="search-results"></div>
         </div>
     </main>
@@ -33,6 +34,7 @@
         const iata = qs.get('iata');
         const type = Number(qs.get('type'));
         const select_limit =  document.getElementById('limit-select')
+        const refresh =  document.getElementById('refresh')
         const select_asc =  document.getElementById('asc-select')
         const limit = Number(select_limit.value);
         const flightMode = type === 1 ? 'Arrivals' : 'Departures';
@@ -45,10 +47,14 @@
                 return;
             }
             title.textContent = `${name || "Airport"} (${iata || "Airport"}) - ${flightMode}`;
-            storeFlights()
-            loadFlights();
+            storeLoad();
         });
-        select_limit.addEventListener('change', loadFlights);
+        async function storeLoad(){
+            storeFlights();
+            loadFlights();
+        }
+        refresh.addEventListener('click',storeLoad)
+        select_limit.addEventListener('change', storeLoad);
         select_asc.addEventListener('change', loadFlights);
         async function storeFlights() {
             if (!iata || iata === 'null' || iata === 'undefined') {
@@ -61,7 +67,6 @@
                 `/api/flights/storeFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=${limit}&page=1`,
                 { method: 'POST' }
             );
-            const flights = await res.json();
         }
 
         async function loadFlights() {

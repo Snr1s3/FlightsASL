@@ -175,24 +175,18 @@ body {
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 #search-results::-webkit-scrollbar {
-    width: 6px;
-}
-
-#search-results::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 999px;
+    width: 0;
+    height: 0;
+    background: transparent;
 }
 
 #search-results::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.25);
-    border-radius: 999px;
-}
-
-#search-results::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.45);
+    background: transparent;
 }
 
 .airport-item {
