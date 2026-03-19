@@ -8,9 +8,13 @@ from fastapi.templating import Jinja2Templates
 from FlightRadar24 import FlightRadar24API
 from FlightRadar24.errors import AirportNotFoundError
 
-from Models.airport import Airport
 from db.db_connection import PostgresConnector
-from Routes.airports import _save_airport, _search_airport, airport_exists, get_airport_by_iata, get_pg
+from Routes.airports import (
+    _save_airport,
+    _search_airport,
+    get_airport_by_iata,
+    get_pg,
+)
 
 try:
     from Models.flight import Flight
@@ -113,8 +117,8 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
         return []
     for flight in flights:
         origin_airport_id = await _ensure_airport_id(flight.origin_iata, flight.origin, pg)
-        destination_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
-        exists = await flight_exists(flight, pg, origin_airport_id, destination_airport_id)
+        dest_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
+        exists = await flight_exists(flight, pg, origin_airport_id, dest_airport_id)
         if not exists:
             pg.insert_one(
                 """
@@ -135,7 +139,7 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
                     flight.id_flight,
                     flight.number,
                     origin_airport_id,
-                    destination_airport_id,
+                    dest_airport_id,
                     flight.scheduled_departure,
                     flight.utc_departure,
                     flight.scheduled_arrival,
@@ -195,7 +199,7 @@ async def _airport_id_from_iata(iata: str, pg: PostgresConnector) -> int | None:
     return row.get("id") if row else None
 
 
-async def _ensure_airport_id(iata: str | None, name: str | None, pg: PostgresConnector) -> int | None:
+async def _ensure_airport_id(iata: str | None, pg: PostgresConnector) -> int | None:
     normalized_iata = (iata or "").strip().upper()
     if not normalized_iata or normalized_iata in {"-", "N/A", "NULL", "NONE", "UNDEFINED"}:
         return None

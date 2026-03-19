@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+from typing import Any, Iterable, Optional
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import Optional, Iterable, Any
+
 
 class PostgresConnector:
     _instance: Optional["PostgresConnector"] = None
