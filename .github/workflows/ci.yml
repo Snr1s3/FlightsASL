@@ -40,3 +40,18 @@ jobs:
 
       - name: Byte-compile sources
         run: poetry run python -m compileall src
+  build:
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Upload a new image to docker
+        uses: Snr1s3/upload-to-docker-action@1.0.2
+        with:
+          docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          docker_tags: snr1s3/flightsasl:latest
+          docker_platforms: linux/amd64,linux/arm64
+          docker_file: ./src/Dockerfile

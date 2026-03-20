@@ -1,0 +1,21 @@
+name: Notify Me
+
+on:
+  workflow_run:
+    workflows: ["Deploy mdBook site to Pages", "Push to mongo", "Pull from mongo"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification
+        uses: Snr1s3/notify-telegram-action@v1.0.3
+        with:
+          telegram_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          telegram_chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            🔔 *${{ github.repository }}*
+            *Workflow:* ${{ github.event.workflow_run.name }}
+            *Conclusion:* ${{ github.event.workflow_run.conclusion }}
+            *Run:* ${{ github.event.workflow_run.html_url }}

@@ -1,4 +1,16 @@
 services:
+  app:
+    image: snr1s3/flightsasl:latest
+    ports: ["8000:8000"]
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: FLIGHTSASL
+      DB_USER: admin
+      DB_PASSWORD: admin
+
   postgres:
     image: postgres:16
     restart: unless-stopped
@@ -9,5 +21,7 @@ services:
       POSTGRES_DB: FLIGHTSASL
     volumes:
       - flights-postgres-data:/var/lib/postgresql/data
+      - ../../src/db/db.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ../../src/db/db_functions.sql:/docker-entrypoint-initdb.d/02_functions.sql
 volumes:
   flights-postgres-data:
