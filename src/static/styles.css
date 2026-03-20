@@ -102,6 +102,57 @@ body {
     min-height: 1.4em;
 }
 
+.flight-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.desplegable,
+.button {
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 0.94rem;
+    font-weight: 600;
+}
+
+.desplegable {
+    min-width: 140px;
+    padding: 0 14px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.desplegable:focus {
+    border-color: var(--brand);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.desplegable option {
+    color: #0f1d3f;
+}
+
+.button {
+    padding: 0 18px;
+    background: var(--button);
+    border-color: transparent;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.button:hover {
+    background: var(--button-hover);
+}
+
+.button:active {
+    transform: scale(0.97);
+}
+
 .search-bar {
     display: flex;
     align-items: center;
@@ -243,5 +294,15 @@ text-align: center;
     .airport-item {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .flight-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .desplegable,
+    .button {
+        width: 100%;
     }
 }

@@ -116,8 +116,8 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
         print("No flight data available.")
         return []
     for flight in flights:
-        origin_airport_id = await _ensure_airport_id(flight.origin_iata, flight.origin, pg)
-        dest_airport_id = await _ensure_airport_id(flight.destination_iata, flight.destination, pg)
+        origin_airport_id = await _ensure_airport_id(flight.origin_iata, pg)
+        dest_airport_id = await _ensure_airport_id(flight.destination_iata, pg)
         exists = await flight_exists(flight, pg, origin_airport_id, dest_airport_id)
         if not exists:
             pg.insert_one(

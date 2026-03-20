@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FlightsASL</title>
-    <link rel="stylesheet" href="{{ request.url_for('static', path='styles.css') }}?v=20260311" />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='styles.css') }}?v=20260320" />
 </head>
 <body>
     <main class="page-shell">
@@ -12,18 +12,20 @@
 
         <div class="card">
             <p id="api-response">Arrivades/Sortides:</p>
-            <select id="limit-select">
-                <option value="1">1</option>
-                <option value="10"selected>10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-            <select id="asc-select">
-                <option value="1"selected>Scheduled ASC</option>
-                <option value="2">Scheduled DESC</option>
-            </select>
-            <button id="refresh">Refresh</button>
+            <div class="flight-controls">
+                <select id="limit-select" class="desplegable" aria-label="Flight limit">
+                    <option value="1">1</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <select id="asc-select" class="desplegable" aria-label="Flight sort order">
+                    <option value="1" selected>Scheduled ASC</option>
+                    <option value="2">Scheduled DESC</option>
+                </select>
+                <button id="refresh" class="button">Refresh</button>
+            </div>
             <div id="search-results"></div>
         </div>
     </main>
