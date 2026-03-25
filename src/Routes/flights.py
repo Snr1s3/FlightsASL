@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Sequence
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from FlightRadar24 import FlightRadar24API
 from FlightRadar24.errors import AirportNotFoundError
@@ -11,16 +11,13 @@ from FlightRadar24.errors import AirportNotFoundError
 from db.db_connection import PostgresConnector
 from Models.flight import _DEFAULT_LIMIT_MODEL, FlightQuery
 from db.db_connection import get_pg
+
 from Routes.airports import (
     _save_airport,
     _search_airport,
     get_airport_by_iata,
 )
-
-try:
-    from Models.flight import Flight
-except ModuleNotFoundError:
-    from src.Models.flight import Flight
+from Models.flight import Flight
 
 router = APIRouter(
     prefix="/api/flights",
@@ -40,10 +37,16 @@ async def get_flights(payload: FlightQuery,
                         pg: PostgresConnector = pg_dependency ):
     normalized_iata = (payload.iata or "").strip().upper()
     if not normalized_iata:
-        return []
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "iata_required", "message": "iata is required"},
+        )
     airport_id = await _airport_id_from_iata(normalized_iata, pg)
     if airport_id is None:
-        return []
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "airport_not_found", "message": f"Airport '{normalized_iata}' not found in database"},
+        )
     order_dir = "ASC" if payload.asc == 1 else "DESC"
     select = """
             SELECT
@@ -91,8 +94,7 @@ async def store_flights(request: Request, payload: FlightQuery,
     normalized_iata = (payload.iata or "").strip()
     if normalized_iata.lower() in {"", "null", "none", "undefined"}:
         return []
-    print(payload.type)
-    print(f"Cercant informació per a: {payload.iata}")
+    
     schedule_type = "arrivals" if payload.type == 1 else "departures"
     items = fetch(fr_api, schedule_type, normalized_iata, limit=payload.limit, page=payload.page)
     
@@ -112,8 +114,10 @@ async def store_flights(request: Request, payload: FlightQuery,
     
 
     if not flights:
-        print("No flight data available.")
-        return []
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "no_flights_found", "message": "No flights found in the current time window"},
+        )
     for flight in flights:
         origin_airport_id = await _ensure_airport_id(flight.origin_iata, pg)
         dest_airport_id = await _ensure_airport_id(flight.destination_iata, pg)

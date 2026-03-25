@@ -5,12 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from Routes import flights
-
-try:
-	from Routes import airports, web
-except ModuleNotFoundError:
-	from src.Routes import airports, web
+from Routes import flights, airports, web
 
 #app = FastAPI(title="FlightsASL API", version="0.1.0", docs_url=None, redoc_url=None)
 app = FastAPI(title="FlightsASL API", version="0.1.0")

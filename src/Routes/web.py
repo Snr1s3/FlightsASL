@@ -1,11 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from FlightRadar24 import FlightRadar24API
-
-try:
-    from db.db_connection import PostgresConnector, get_pg
-except ModuleNotFoundError:
-    from src.db.db_connection import PostgresConnector, get_pg
+from db.db_connection import PostgresConnector, get_pg
 
 router = APIRouter(
     prefix="/web",
