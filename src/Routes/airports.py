@@ -18,14 +18,30 @@ fr_api = FlightRadar24API()
 
 pg_dependency = Depends(get_pg)
 
+@router.get("/all")
+async def get_all(pg: PostgresConnector = pg_dependency) -> list[Airport]:
+    aeroports = pg.execute("SELECT * FROM airports WHERE search IS TRUE ORDER BY iata", fetch="all")
+    if aeroports:
+        return aeroports
+    return []
+
 @router.post("/save")
 async def save_airport(airport: Airport, pg: PostgresConnector = pg_dependency):
     result = await _save_airport(airport, pg, True)
     return result
 
+@router.post("/search")
+async def search_airport(payload: AirportSearchRequest) -> list[Airport]:
+    aeroports = await _search_airport(payload.name)
+    return aeroports
+
 async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
     if await airport_exists(airport.iata, pg):
-        return [{"Duplicated":"This airport already exists"}]
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "airport_already_exists", "message": "This airport already exists"},
+        )
+    
     result = pg.insert_one(
         """
         INSERT INTO airports (name, iata, icao, lat, lon, search)
@@ -38,33 +54,26 @@ async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
         "rows_affected": result,
     }
 
-@router.post("/search")
-async def search_airport(payload: AirportSearchRequest) -> list[Airport]:
-    aeroports = await _search_airport(payload.name)
-    return aeroports
-
 async def _search_airport(name: str) -> list[Airport]:
     print(f"Cercant informació per a: {name}")
     resultats = fr_api.search(name)
     aeroports = await _parse_results(resultats)
     if not aeroports:
-        print("No s'han trobat aeroports.")
-        return []
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "airport_not_found", "message": "This airport does not exist"},
+        )
     return aeroports
-
-@router.get("/all")
-async def get_all(pg: PostgresConnector = pg_dependency) -> list[Airport]:
-    aeroports = pg.execute("SELECT * FROM airports WHERE search IS TRUE ORDER BY iata", fetch="all")
-    if aeroports:
-        return aeroports
-    return []
 
 
 
 async def get_airport_by_iata(iata: str, pg: PostgresConnector = pg_dependency) -> Airport:
     normalized_iata = (iata or "").strip().upper()
     if not normalized_iata:
-        raise HTTPException(status_code=400, detail="iata is required")
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "iata_required", "message": "iata is required"},
+        )
 
     saved = pg.execute(
         "SELECT name, iata, icao, lat, lon FROM airports WHERE UPPER(iata) = %s LIMIT 1",
@@ -80,7 +89,10 @@ async def get_airport_by_iata(iata: str, pg: PostgresConnector = pg_dependency) 
         if (airport.iata or "").upper() == normalized_iata:
             return airport
 
-    raise HTTPException(status_code=404, detail="airport not found")
+    raise HTTPException(
+        status_code=404,
+        detail={"error": "airport_not_found", "message": "This airport does not exist"},
+    )
 
 async def airport_exists(iata, pg: PostgresConnector) -> bool:
     result = pg.execute(
@@ -94,9 +106,9 @@ async def _parse_results(resultats: Any) -> List[Airport]:
     if not isinstance(resultats, dict):
         return []
     aeroports_raw = resultats.get("airport", []) or []
-    return [from_api(item) for item in aeroports_raw]
+    return [_from_api(item) for item in aeroports_raw]
 
-def from_api(data: dict) -> Airport:
+async def _from_api(data: dict) -> Airport:
     label = (data.get("label") or "").strip()
     detail = data.get("detail") or {}
     match = re.search(r"\(([^/]+)\s*/\s*([^)]+)\)", label)
