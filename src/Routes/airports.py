@@ -4,9 +4,8 @@ from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from FlightRadar24 import FlightRadar24API
 
-from db.db_connection import PostgresConnector
+from db.db_connection import PostgresConnector, get_pg
 from Models.airport import Airport, AirportSearchRequest
-from Routes.web import get_pg
 
 router = APIRouter(
     prefix="/api/airport",

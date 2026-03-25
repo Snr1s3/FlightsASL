@@ -10,11 +10,11 @@ from FlightRadar24.errors import AirportNotFoundError
 
 from db.db_connection import PostgresConnector
 from Models.flight import _DEFAULT_LIMIT_MODEL, FlightQuery
+from db.db_connection import get_pg
 from Routes.airports import (
     _save_airport,
     _search_airport,
     get_airport_by_iata,
-    get_pg,
 )
 
 try:
