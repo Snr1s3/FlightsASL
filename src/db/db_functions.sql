@@ -4,6 +4,8 @@ CREATE OR REPLACE FUNCTION purge_old_flights_by_arrival()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  v_removed_count INTEGER := 0;
 BEGIN
     -- Step 2: Delete rows from flights where utc_arrival is below X.
     -- TG_ARGV[0] is the first argument passed from the trigger definition.
@@ -11,6 +13,11 @@ BEGIN
     DELETE FROM flights
     WHERE utc_arrival IS NOT NULL
       AND utc_arrival < EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint;
+
+    GET DIAGNOSTICS v_removed_count = ROW_COUNT;
+
+    INSERT INTO PURGE_INFO (removed_count)
+    VALUES (v_removed_count);
 
     -- Step 3: Return NEW as required for trigger functions.
     -- For statement-level triggers, NEW is not used, but RETURN NEW keeps function signature valid.

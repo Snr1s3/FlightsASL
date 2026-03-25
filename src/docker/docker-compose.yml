@@ -1,15 +1,16 @@
 services:
   app:
     image: snr1s3/flightsasl:latest
+    restart: unless-stopped
     ports: ["8000:8000"]
     depends_on:
       - postgres
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: FLIGHTSASL
-      DB_USER: admin
-      DB_PASSWORD: admin
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: FLIGHTSASL
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
 
   postgres:
     image: postgres:16
