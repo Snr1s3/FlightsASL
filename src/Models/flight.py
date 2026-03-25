@@ -2,8 +2,9 @@ from typing import Optional
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+_DEFAULT_LIMIT_MODEL = 100
 
-class Flight(BaseModel):
+class FlightBase(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
         str_strip_whitespace=True,
@@ -20,6 +21,12 @@ class Flight(BaseModel):
         description="Published flight identifier (e.g., AS123)",
         min_length=1,
         max_length=16,
+    )
+class Flight(FlightBase):
+    model_config = ConfigDict(
+        extra="ignore",
+        str_strip_whitespace=True,
+        populate_by_name=True,
     )
     origin: Optional[str] = Field(
         default=None,
@@ -72,3 +79,25 @@ class Flight(BaseModel):
             f"airport_dest_iata={self.destination_iata} | airport_dest={self.destination} | "
             f"departure={self.scheduled_departure} | arrival={self.scheduled_arrival})"
         )
+    
+class FlightDetail(Flight):
+    model_config = ConfigDict(
+        extra="ignore",
+        str_strip_whitespace=True,
+        populate_by_name=True,
+    )
+    lat: Optional[float] = Field(
+        default=None,
+        description="Latitude in decimal degrees",
+    )
+    lon: Optional[float] = Field(
+        default=None,
+        description="Longitude in decimal degrees",
+    )
+
+class FlightQuery(BaseModel):
+    iata: str
+    type: int = 1
+    limit: int = _DEFAULT_LIMIT_MODEL
+    page: int = 1
+    asc: int = 1

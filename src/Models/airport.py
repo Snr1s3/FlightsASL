@@ -27,3 +27,7 @@ class Airport(BaseModel):
         default= False,
         description="Was searched by the user"
     )
+
+
+class AirportSearchRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Airport search text")

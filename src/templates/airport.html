@@ -63,12 +63,20 @@
                 window.location.replace('/airports');
                 return;
             }
-            
-            const limit = Number(select_limit.value || 10);
-            const res = await fetch(
-                `/api/flights/storeFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=${limit}&page=1`,
-                { method: 'POST' }
-            );
+            const payload = {
+                iata,
+                type,
+                limit: Number(select_limit.value || 10),
+                page: 1
+            };
+
+            const res = await fetch('/api/flights/storeFlights', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
         }
 
         async function loadFlights() {
@@ -76,16 +84,27 @@
                 window.location.replace('/airports');
                 return;
             }
+            const payload = {
+                iata,
+                type,
+                limit: Number(select_limit.value || 10),
+                asc : Number(select_asc.value),
+                page: 1
+            };
 
-            const limit = Number(select_limit.value || 10);
-            const asc = Number(select_asc.value);
-            const res = await fetch(`/api/flights/getFlights?iata=${encodeURIComponent(iata)}&type=${type}&limit=${limit}&asc=${asc}&page=1`);
+            const res = await fetch('/api/flights/getFlights', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
             const flights = await res.json();
 
             console.log(flights)
             results.innerHTML = flights.map((a) => `
                 <div class="airport-item">
-                    <div class="airport-meta">
+                    <div class="airport-meta"> ${a.id_flight}
                         <p class="airport-name">${a.number} - / ${a.origin_iata} - ${a.origin} / ${a.destination_iata} - ${a.destination}</p> 
                         <p class="airport-coords">Departure: ${a.scheduled_departure} / Arrival: ${a.scheduled_arrival}</p> 
                     </div> 

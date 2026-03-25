@@ -9,6 +9,7 @@ from FlightRadar24 import FlightRadar24API
 from FlightRadar24.errors import AirportNotFoundError
 
 from db.db_connection import PostgresConnector
+from Models.flight import _DEFAULT_LIMIT_MODEL, FlightQuery
 from Routes.airports import (
     _save_airport,
     _search_airport,
@@ -31,20 +32,19 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 pg_dependency = Depends(get_pg)
 fr_api = FlightRadar24API()
-_DEFAULT_LIMIT = 100
+_DEFAULT_LIMIT = _DEFAULT_LIMIT_MODEL
 
-@router.get("/getFlights")
-async def get_flights(request: Request, iata: str = None, type: int = 1,
-                        limit: int = _DEFAULT_LIMIT, page: int = 1,
-                        pg: PostgresConnector = pg_dependency, asc: int =1 ):
-    normalized_iata = (iata or "").strip().upper()
+
+@router.post("/getFlights")
+async def get_flights(payload: FlightQuery,
+                        pg: PostgresConnector = pg_dependency ):
+    normalized_iata = (payload.iata or "").strip().upper()
     if not normalized_iata:
         return []
     airport_id = await _airport_id_from_iata(normalized_iata, pg)
     if airport_id is None:
         return []
-    order_dir = "ASC" if asc == 1 else "DESC"
-    print(type)
+    order_dir = "ASC" if payload.asc == 1 else "DESC"
     select = """
             SELECT
                 f.id_flight,
@@ -61,41 +61,40 @@ async def get_flights(request: Request, iata: str = None, type: int = 1,
             LEFT JOIN airports ao ON ao.id = f.origin_airport_id
             LEFT JOIN airports ad ON ad.id = f.destination_airport_id
             """
-    if type == 1:
+    if payload.type == 1:
         select += f"""
             WHERE f.destination_airport_id = %s
-            AND f.utc_arrival >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint
+            AND f.utc_arrival >= EXTRACT(EPOCH FROM (NOW()))::bigint
             ORDER BY f.scheduled_arrival {order_dir} , f.number ASC
             LIMIT %s
                 """
     else:
         select += f"""
             WHERE f.origin_airport_id = %s
-              AND f.utc_departure >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '2 hours'))::bigint
+              AND f.utc_departure >= EXTRACT(EPOCH FROM (NOW()))::bigint
                         ORDER BY f.utc_departure {order_dir}, f.number ASC
             LIMIT %s
             """
 
     flights = pg.execute(
         select,
-        (airport_id, limit),
+        (airport_id, payload.limit),
         fetch="all",
     )
     return flights
 
 @router.post("/storeFlights")
-async def store_flights(request: Request, iata: str = None, type: int = 1,
-                        limit: int = _DEFAULT_LIMIT, page: int = 1,
-                        pg: PostgresConnector = pg_dependency):
-    if iata is None:
+async def store_flights(request: Request, payload: FlightQuery,
+                        pg: PostgresConnector = pg_dependency ):
+    if payload.iata is None:
         return templates.TemplateResponse("airports.html", {"request": request})
-    normalized_iata = (iata or "").strip()
+    normalized_iata = (payload.iata or "").strip()
     if normalized_iata.lower() in {"", "null", "none", "undefined"}:
         return []
-    print(type)
-    print(f"Cercant informació per a: {iata}")
-    schedule_type = "arrivals" if type == 1 else "departures"
-    items = fetch(fr_api, schedule_type, normalized_iata, limit=limit, page=page)
+    print(payload.type)
+    print(f"Cercant informació per a: {payload.iata}")
+    schedule_type = "arrivals" if payload.type == 1 else "departures"
+    items = fetch(fr_api, schedule_type, normalized_iata, limit=payload.limit, page=payload.page)
     
     print(f"total items from API: {len(items)}")
 
@@ -109,7 +108,7 @@ async def store_flights(request: Request, iata: str = None, type: int = 1,
     ]
     print(f"items after time filter: {len(filtered_items)}")
     
-    flights = [await _build_flight(item, schedule_type, iata) for item in filtered_items]
+    flights = [await _build_flight(item, schedule_type, payload.iata) for item in filtered_items]
     
 
     if not flights:
@@ -254,7 +253,7 @@ async def _build_flight(item: dict, schedule_type: str, iata_airport_search : st
         or identification.get("id")
         or "-"
     )
-    print(flight.get("identification", {}))
+    print(flight_id)
     origin_key = "origin"
     dest_key = "destination"
     airport_section = flight.get("airport", {}) or {}

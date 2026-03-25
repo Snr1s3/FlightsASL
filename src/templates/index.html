@@ -65,7 +65,13 @@
         const name = search_input.value.trim();
         if (!name) return;
 
-        const res = await fetch(`/api/airport/search?name=${encodeURIComponent(name)}`);
+        const res = await fetch('/api/airport/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name })
+        });
         const airports = await res.json();
 
         currentAirports = airports;

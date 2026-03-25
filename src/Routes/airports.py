@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from FlightRadar24 import FlightRadar24API
 
 from db.db_connection import PostgresConnector
-from Models.airport import Airport
+from Models.airport import Airport, AirportSearchRequest
 from Routes.web import get_pg
 
 router = APIRouter(
@@ -38,9 +38,9 @@ async def _save_airport(airport: Airport, pg: PostgresConnector, search: bool):
         "rows_affected": result,
     }
 
-@router.get("/search")
-async def search_airport(name: str) -> list[Airport]:
-    aeroports = await _search_airport(name)
+@router.post("/search")
+async def search_airport(payload: AirportSearchRequest) -> list[Airport]:
+    aeroports = await _search_airport(payload.name)
     return aeroports
 
 async def _search_airport(name: str) -> list[Airport]:
