@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from FlightRadar24 import FlightRadar24API
+
 from db.db_connection import PostgresConnector, get_pg
 
 router = APIRouter(

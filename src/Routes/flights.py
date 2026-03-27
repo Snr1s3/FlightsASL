@@ -8,16 +8,9 @@ from fastapi.templating import Jinja2Templates
 from FlightRadar24 import FlightRadar24API
 from FlightRadar24.errors import AirportNotFoundError
 
-from db.db_connection import PostgresConnector
-from Models.flight import _DEFAULT_LIMIT_MODEL, FlightQuery
-from db.db_connection import get_pg
-
-from Routes.airports import (
-    _save_airport,
-    _search_airport,
-    get_airport_by_iata,
-)
-from Models.flight import Flight
+from db.db_connection import PostgresConnector, get_pg
+from Models.flight import _DEFAULT_LIMIT_MODEL, Flight, FlightQuery
+from Routes.airports import _save_airport, _search_airport, get_airport_by_iata
 
 router = APIRouter(
     prefix="/api/flights",
@@ -45,7 +38,10 @@ async def get_flights(payload: FlightQuery,
     if airport_id is None:
         raise HTTPException(
             status_code=404,
-            detail={"error": "airport_not_found", "message": f"Airport '{normalized_iata}' not found in database"},
+            detail={
+                "error": "airport_not_found",
+                "message": f"Airport '{normalized_iata}' not found in database",
+            },
         )
     order_dir = "ASC" if payload.asc == 1 else "DESC"
     select = """
@@ -116,7 +112,10 @@ async def store_flights(request: Request, payload: FlightQuery,
     if not flights:
         raise HTTPException(
             status_code=404,
-            detail={"error": "no_flights_found", "message": "No flights found in the current time window"},
+            detail={
+                "error": "no_flights_found",
+                "message": "No flights found in the current time window",
+            },
         )
     for flight in flights:
         origin_airport_id = await _ensure_airport_id(flight.origin_iata, pg)
