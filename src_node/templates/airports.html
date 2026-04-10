@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlightsASL</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <main class="page-shell">
+        {% include "topbar.html" %}
+
+        <div class="card">
+            <div class="section-head">
+                <p id="api-response">Airports List:</p>
+                <button id="delete-all" class="airport-btn" type="button">Delete All</button>
+            </div>
+            <div id="search-results">
+                <p>Empty List</p>
+            </div>
+        </div>
+    </main>
+    <script>
+        const results = document.getElementById('search-results');
+        const delete_all = document.getElementById('delete-all');
+
+        let currentAirports = [];
+        delete_all.addEventListener('click', () => delete_airports());
+        document.addEventListener("DOMContentLoaded", () => {
+            loadAirports();
+        });
+
+        results.addEventListener('click', async e => {
+            const button = e.target.closest('.airport-btn');
+            if (!button) return;
+
+            const index = Number(button.dataset.index);
+            const airport = currentAirports[index];
+            const type = Number(button.dataset.type);
+            console.log(airport)
+            console.log(type)
+            if (!airport) return;
+            const params = new URLSearchParams({
+                name: airport.name || '',
+                iata: airport.iata || '',
+                type: String(type),
+            });
+            window.location.href = `/airport?${params.toString()}`;
+        });
+        async function delete_airports() {
+            const ok = confirm("Delete all airports?");
+            if (!ok) return;
+
+            const res = await fetch("/web/dropAll", {
+                method: "DELETE"
+            });
+
+            if (!res.ok) {
+                console.error("Delete failed", res.status);
+                return;
+            }
+
+            const data = await res.json();
+            console.log(data);
+            await loadAirports(); 
+        }
+        async function loadAirports() {
+            const res = await fetch(`/api/airport/all`);
+            const airports = await res.json();
+            if (!airports.length) {
+                results.innerHTML =  `
+                <p class="airport-coords">Empty List</p> 
+                `
+                currentAirports = [];
+                return;
+            }
+            currentAirports = airports;
+
+            results.innerHTML = airports.map((a, index) => `
+                <div class="airport-item">
+                    <div class="airport-meta">
+                        <p class="airport-name">${a.name} - ${a.iata} / ${a.icao}</p> 
+                        <p class="airport-coords">${a.lat} / ${a.lon}</p> 
+                    </div> 
+                    <div class="airport-actions"> 
+                        <button class="airport-btn" data-index="${index}" data-type="1">Arrivals</button>
+                        <button class="airport-btn" data-index="${index}" data-type="2">Departures</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
